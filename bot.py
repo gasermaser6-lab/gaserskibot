@@ -1,16 +1,19 @@
 import discord
 import os
-from groq import Groq
+from openai import OpenAI
 from collections import defaultdict
 
 # ─── KONFIGURACIJA ────────────────────────────────────────────────────────────
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-MAX_HISTORY = 10
+MAX_HISTORY = 5
 # ──────────────────────────────────────────────────────────────────────────────
 
-groq_client = Groq(api_key=GROQ_API_KEY)
+client_ai = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY
+)
 
 conversation_history = defaultdict(list)
 
@@ -44,10 +47,10 @@ def get_ai_response(user_id: int, username: str, user_message: str) -> str:
     messages.append({"role": "user", "content": user_message})
 
     try:
-        response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+        response = client_ai.chat.completions.create(
+            model="meta-llama/llama-3.3-70b-instruct",
             messages=messages,
-            max_tokens=500
+            max_tokens=150
         )
         bot_reply = response.choices[0].message.content.strip()
 
@@ -60,7 +63,7 @@ def get_ai_response(user_id: int, username: str, user_message: str) -> str:
         return bot_reply
 
     except Exception as e:
-        print(f"Greška sa Groq API: {e}")
+        print(f"Greška sa API: {e}")
         return "Ej, desila mi se neka greška... pokušaj ponovo malo kasnije 😅"
 
 
