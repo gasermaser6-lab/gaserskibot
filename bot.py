@@ -49,7 +49,7 @@ def get_ai_response(user_id: int, username: str, user_message: str) -> str:
 
     try:
         response = client_ai.chat.completions.create(
-            model="google/gemini-2.0-flash-001",
+            model="meta-llama/llama-3.3-70b-instruct:free",
             messages=messages,
             max_tokens=150
         )
