@@ -1,19 +1,13 @@
 import discord
 import os
-from openai import OpenAI
+import httpx
+import json
 from collections import defaultdict
 
-# ─── KONFIGURACIJA ────────────────────────────────────────────────────────────
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 MAX_HISTORY = 5
-# ──────────────────────────────────────────────────────────────────────────────
-
-client_ai = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=OPENROUTER_API_KEY
-)
 
 conversation_history = defaultdict(list)
 
@@ -31,41 +25,59 @@ Ako te pitaju za savet, informaciju ili objašnjenje - daj normalan odgovor kao 
 KRITIČNO: Uvek piši SAMO latiničnim slovima, nikad ćirilicom. Nikad ne koristi reči koje nisu srpske. Ako nisi siguran za neku reč, koristi jednostavniju srpsku reč.
 VAŽNO: Pišeš isključivo standardni srpski jezik latinica bez grešaka. Nikad ne izmišljaš reči, nikad ne koristiš bosanske ili hrvatske izraze. Koristiš samo srpske reči i srpski pravopis."""
 
+MODELS = [
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "deepseek/deepseek-chat-v3-0324:free",
+    "openrouter/free",
+]
 
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 
 
-def get_ai_response(user_id: int, username: str, user_message: str) -> str:
+async def get_ai_response(user_id: int, username: str, user_message: str) -> str:
     history = conversation_history[user_id]
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT + f"\n\nKorisnik se zove: {username}"}]
-
     for entry in history:
         messages.append({"role": entry["role"], "content": entry["content"]})
-
     messages.append({"role": "user", "content": user_message})
 
-    try:
-        response = client_ai.chat.completions.create(
-            model="meta-llama/llama-3.3-70b-instruct:free",
-            messages=messages,
-            max_tokens=150
-        )
-        bot_reply = response.choices[0].message.content.strip()
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+    }
 
-        history.append({"role": "user", "content": user_message})
-        history.append({"role": "assistant", "content": bot_reply})
+    async with httpx.AsyncClient(timeout=30) as http:
+        for model in MODELS:
+            try:
+                resp = await http.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers=headers,
+                    json={"model": model, "messages": messages, "max_tokens": 150}
+                )
+                data = resp.json()
 
-        if len(history) > MAX_HISTORY * 2:
-            conversation_history[user_id] = history[-(MAX_HISTORY * 2):]
+                if resp.status_code != 200:
+                    print(f"Greška sa {model}: {data}")
+                    continue
 
-        return bot_reply
+                bot_reply = data["choices"][0]["message"]["content"].strip()
 
-    except Exception as e:
-        print(f"Greška sa API: {e}")
-        return "Ej, desila mi se neka greška... pokušaj ponovo malo kasnije 😅"
+                history.append({"role": "user", "content": user_message})
+                history.append({"role": "assistant", "content": bot_reply})
+                if len(history) > MAX_HISTORY * 2:
+                    conversation_history[user_id] = history[-(MAX_HISTORY * 2):]
+
+                print(f"   (model: {model})")
+                return bot_reply
+
+            except Exception as e:
+                print(f"Greška sa {model}: {e}")
+                continue
+
+    return "Ej, desila mi se neka greška... pokušaj ponovo malo kasnije 😅"
 
 
 @client.event
@@ -97,9 +109,7 @@ async def on_message(message: discord.Message):
         user_id = message.author.id
 
         print(f"📨 [{username}]: {user_text}")
-
-        response = get_ai_response(user_id, username, user_text)
-
+        response = await get_ai_response(user_id, username, user_text)
         print(f"🤖 [Zoki]: {response}")
 
     await message.reply(response)
