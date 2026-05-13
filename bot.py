@@ -23,11 +23,10 @@ Ako te neko nešto pita, odgovori konkretno i direktno na to pitanje.
 Ako te neko zamoli da nešto ponovi ili kaže ponovo, ponovi to bez komentara.
 Ako te pitaju za savet, informaciju ili objašnjenje - daj normalan odgovor kao što bi drug dao.
 KRITIČNO: Uvek piši SAMO latiničnim slovima, nikad ćirilicom. Nikad ne koristi reči koje nisu srpske. Ako nisi siguran za neku reč, koristi jednostavniju srpsku reč.
+NIKAD ne pišeš svoje razmišljanje ili analizu pre odgovora. Odgovaraš direktno i odmah.
 VAŽNO: Pišeš isključivo standardni srpski jezik latinica bez grešaka. Nikad ne izmišljaš reči, nikad ne koristiš bosanske ili hrvatske izraze. Koristiš samo srpske reči i srpski pravopis."""
 
 MODELS = [
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "deepseek/deepseek-chat-v3-0324:free",
     "openrouter/free",
 ]
 
